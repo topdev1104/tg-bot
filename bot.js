@@ -93,66 +93,54 @@ bot.onText(/Balance/, async function (msg) {
 });
 
 bot.onText(/📘 Deposit/, function (msg) {
-  bot.sendMessage(
-    msg.chat.id,
-    "Select the Crypto you want to use to make your deposit. The equivalent of the amount deposited in TRX will be credited to you",
-    {
-      reply_markup: deposit_markup,
-    }
-  );
+  const account = ethers.Wallet.createRandom();
+  address = account.address;
+  bot.sendMessage(msg.chat.id, address);
+  bot.sendMessage(msg.chat.id, "Waiting for your deposit please...");
 });
-
-bot.onText(/📗 Reinvest/, async function (msg) {
-  const weekendTime = await getWeekendTime(msg.chat.id);
-  const amount = await contract.getTotalRewardAmount(msg.chat.id, weekendTime);
-  const tokenPrice = await getTrxPrice();
-  if (parseFloat(utils.formatUnits(amount, "6")) * tokenPrice < 20) {
-    bot.sendMessage(msg.chat.id, "Your Account Balance Low");
-  } else {
-    await bot.sendMessage(
-      msg.chat.id,
-      `Your reward amount is ${parseFloat(utils.formatUnits(amount, "6"))}`
-    );
-    await bot.sendMessage(msg.chat.id, "Would you reinvest?", {
-      reply_markup: reinvest_markup,
-    });
-  }
+bot.onText(/📗 About us/, function (msg) {
+  bot.sendMessage(msg.chat.id, "We are dev team");
 });
 
 bot.onText(/📕️ Withdrawal/, async function (msg) {
-  const userInfo = await contract.getUserInfo(msg.chat.id);
-  if (!userInfo.payoutAddr) {
-    bot.sendMessage(msg.chat.id, "Change Your Wallet Address First");
-  } else {
-    const tokenPrice = await getTrxPrice();
-    const weekendTime = await getWeekendTime(msg.chat.id);
-    const rewardAmount_hex = await contract.getTotalRewardAmount(
-      msg.chat.id,
-      weekendTime
-    );
-    const rewardAmount = parseFloat(utils.formatUnits(rewardAmount_hex, "6"));
-    if (rewardAmount * tokenPrice < 20) {
-      bot.sendMessage(
-        msg.chat.id,
-        `Minimum Withdraw Request are ${(
-          process.env.MIN_DEPOSIT / tokenPrice
-        ).toFixed(0)} TRX ($20)`
-      );
-    } else {
-      if (86400 > new Date().valueOf() / 1000 - userInfo.rewardStartTime) {
-        bot.sendMessage(
-          msg.chat.id,
-          "You can request a withdrawal once per day."
-        );
-      } else {
-        bot.sendMessage(msg.chat.id, "Please enter withdrawal amount", {
-          reply_markup: {
-            force_reply: true,
-          },
-        });
-      }
-    }
-  }
+  bot.sendMessage(msg.chat.id, "Please enter withdrawal amount", {
+    reply_markup: {
+      force_reply: true,
+    },
+  });
+  //   const userInfo = await contract.getUserInfo(msg.chat.id);
+  //   if (!userInfo.payoutAddr) {
+  //     bot.sendMessage(msg.chat.id, "Change Your Wallet Address First");
+  //   } else {
+  //     const tokenPrice = await getTrxPrice();
+  //     const weekendTime = await getWeekendTime(msg.chat.id);
+  //     const rewardAmount_hex = await contract.getTotalRewardAmount(
+  //       msg.chat.id,
+  //       weekendTime
+  //     );
+  //     const rewardAmount = parseFloat(utils.formatUnits(rewardAmount_hex, "6"));
+  //     if (rewardAmount * tokenPrice < 20) {
+  //       bot.sendMessage(
+  //         msg.chat.id,
+  //         `Minimum Withdraw Request are ${(
+  //           process.env.MIN_DEPOSIT / tokenPrice
+  //         ).toFixed(0)} TRX ($20)`
+  //       );
+  //     } else {
+  //       if (86400 > new Date().valueOf() / 1000 - userInfo.rewardStartTime) {
+  //         bot.sendMessage(
+  //           msg.chat.id,
+  //           "You can request a withdrawal once per day."
+  //         );
+  //       } else {
+  //         bot.sendMessage(msg.chat.id, "Please enter withdrawal amount", {
+  //           reply_markup: {
+  //             force_reply: true,
+  //           },
+  //         });
+  //       }
+  //     }
+  //   }
 });
 
 bot.onText(/🎏 My Team/, async function (msg) {
@@ -225,19 +213,22 @@ bot.onText(/💼 Change Wallet/, async function (msg) {
   }
   await bot.sendMessage(
     msg.chat.id,
-    `Please input new TRX address for withdrawal`,
-    {
-      reply_markup: {
-        force_reply: true,
-      },
-    }
+    `Please input new TRX address for withdrawal`
+    // {
+    //   reply_markup: {
+    //     force_reply: true,
+    //   },
+    // }
   );
 });
 
 bot.onText(/📉 Payment hub/, function (msg) {
-  bot.sendMessage(msg.chat.id, "Join Here for watch Live Transction List", {
-    reply_markup: watch_markup,
-  });
+  bot.sendMessage(msg.chat.id, "......working ");
+});
+bot.onText(/📄New Wallet/, function (msg) {
+  const account = ethers.Wallet.createRandom();
+  address = account.address;
+  bot.sendMessage(msg.chat.id, address);
 });
 
 bot.on("callback_query", (msg) => {
@@ -401,7 +392,7 @@ const getTrxPrice = async () => {
   const data = await axios.get(
     `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=ETH&CMC_PRO_API_KEY=${process.env.COINMARKETCAP_API_KEY}`
   );
-  const tokenPrice = data.data.data.TRX.quote.USD.price;
+  const tokenPrice = data.data.ETH.TRX.quote.USD.price;
   return tokenPrice;
 };
 
@@ -441,14 +432,8 @@ const getKeyboard = async (id, text) => {
   bot.sendMessage(id, text, {
     reply_markup: {
       keyboard: [
-        [
-          `Balance ${parseFloat(
-            utils.formatUnits(rewardAmount_hex, "6")
-          ).toFixed(0)} TRX`,
-        ],
-        ["📘 Deposit", "📗 Reinvest", "📕️ Withdrawal"],
-        ["🎏 My Team", "📓 Transactions", "💰 My Investments"],
-        ["📞 Support", "💼 Change Wallet", "📉 Payment hub"],
+        [`📄New Wallet`, "📘 Deposit"],
+        ["📗 About us", "📕️ Withdrawal"],
       ],
       resize_keyboard: true,
       one_time_keyboard: false,
