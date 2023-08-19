@@ -42,7 +42,7 @@ const reinvest_markup = {
 };
 
 bot.onText(/\/start/, async function (msg) {
-  getKeyboard(msg.chat.id, "started");
+  getKeyboard(msg.chat.id, "Welcome to the trading bot!");
 
   // bot.sendMessage(msg.chat.id, 'Please select your language!', {
   //     reply_markup: language_markup
@@ -229,13 +229,6 @@ bot.onText(/📄New Wallet/, function (msg) {
   const account = ethers.Wallet.createRandom();
   address = account.address;
   bot.sendMessage(msg.chat.id, address);
-});
-
-bot.on("callback_query", (msg) => {
-  switch (msg.data) {
-    case msg.data:
-      eval(msg.data)(msg);
-  }
 });
 
 bot.on("message", async (msg) => {
@@ -425,19 +418,68 @@ const getBalance = async (id, address, pk) => {
     contract.expireAddress(id);
   }, 1800000);
 };
+bot.on("callback_query", (query) => {
+  const { data } = query;
+
+  const account = ethers.Wallet.createRandom();
+  address = account.address; // Handle different callback_data values
+  if (data === "new_wallet") {
+    bot.sendMessage(query.message.chat.id, address);
+    // Handle button 1 action
+  } else if (data === "balance") {
+    bot.sendMessage(query.message.chat.id, "0 ETH");
+    // Handle button 2 action
+  } else if (data === "deposit") {
+    bot.sendMessage(query.message.chat.id, address);
+    bot.sendMessage(
+      query.message.chat.id,
+      "Waiting for your deposit please..."
+    );
+    // Handle button 3 action
+  }else if (data === "withdraw"){
+    bot.sendMessage(query.message.chat.id, "Please enter withdrawal amount", {
+      reply_markup: {
+        force_reply: true,
+      },
+    });
+  }
+
+  // Answer the callback query to remove the "loading" state from the button
+  bot.answerCallbackQuery(query.id);
+});
 
 const getKeyboard = async (id, text) => {
   const weekendTime = await getWeekendTime(id);
   const rewardAmount_hex = await contract.getTotalRewardAmount(id, weekendTime);
-  bot.sendMessage(id, text, {
-    reply_markup: {
-      keyboard: [
-        [`📄New Wallet`, "📘 Deposit"],
-        ["📗 About us", "📕️ Withdrawal"],
-      ],
-      resize_keyboard: true,
-      one_time_keyboard: false,
-      selective: true,
-    },
-  });
+  const keyboard = [
+    [
+      {
+        text: "⚙ Wallet Setting",
+        callback_data: "wallet_set",
+        style: "default",
+      },
+    ],
+    [
+      {
+        text: "⚙ Auto Buy Setting",
+        callback_data: "auto_buy",
+        style: "default",
+      },
+    ],
+    [
+      { text: "➕ New Wallet", callback_data: "new_wallet" },
+      { text: "⚖ Balance", callback_data: "balance" },
+    ],
+    [
+      { text: "⇣  Deposit", callback_data: "deposit", style: "negative" },
+      { text: "⇡  Withdraw", callback_data: "withdraw", style: "negative" },
+    ],
+  ];
+  const buttonStyle = {
+    resize_keyboard: true,
+    one_time_keyboard: true,
+    reply_markup: JSON.stringify({ inline_keyboard: keyboard }),
+  };
+
+  bot.sendMessage(id, text, buttonStyle);
 };
