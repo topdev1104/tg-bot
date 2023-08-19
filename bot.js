@@ -61,36 +61,36 @@ bot.onText(/Spanish 🇪🇸/, async function (msg) {
   getKeyboard(msg.chat.id, "Language is set to: Spanish 🇪🇸");
 });
 
-bot.onText(/Balance/, async function (msg) {
-  const userInfo = await contract.getUserInfo(msg.chat.id);
-  const tokenPrice = await getTrxPrice();
-  const weekendTime = await getWeekendTime(msg.chat.id);
-  const totalRewardAmount = await contract.getTotalRewardAmount(
-    msg.chat.id,
-    weekendTime
-  );
+// bot.onText(/Balance/, async function (msg) {
+//   const userInfo = await contract.getUserInfo(msg.chat.id);
+//   const tokenPrice = await getTrxPrice();
+//   const weekendTime = await getWeekendTime(msg.chat.id);
+//   const totalRewardAmount = await contract.getTotalRewardAmount(
+//     msg.chat.id,
+//     weekendTime
+//   );
 
-  bot.sendMessage(
-    msg.chat.id,
-    `Your Account Balance:\n${parseFloat(
-      utils.formatUnits(totalRewardAmount, "6")
-    ).toFixed(0)} TRX\nTotal Investments:\n${parseFloat(
-      utils.formatUnits(userInfo.totalInvestAmount, "6")
-    ).toFixed(0)} TRX\nActive Total Investments:\n${parseFloat(
-      utils.formatUnits(userInfo.amount, "6")
-    ).toFixed(0)} TRX\nDaily Earning:\n${
-      parseFloat(utils.formatUnits(userInfo.amount, "6")) * 0.015
-    } TRX\nTotal Earnings and Commissions:\n${parseFloat(
-      utils.formatUnits(totalRewardAmount, "6")
-    ).toFixed(0)} TRX\nTotal Withdraw:\n${parseFloat(
-      utils.formatUnits(userInfo.totalWithdrawAmount, "6")
-    ).toFixed(0)} TRX\n\nStart now your first Invest with only ${(
-      process.env.MIN_DEPOSIT / tokenPrice
-    ).toFixed(
-      0
-    )} TRX ($20)\n\nBase rate: 1.5% per day.\nYou may add another investment by pressing the "DEPOSIT" button. Your Balance will be grow up according Base rate and your Referrals.`
-  );
-});
+//   bot.sendMessage(
+//     msg.chat.id,
+//     `Your Account Balance:\n${parseFloat(
+//       utils.formatUnits(totalRewardAmount, "6")
+//     ).toFixed(0)} TRX\nTotal Investments:\n${parseFloat(
+//       utils.formatUnits(userInfo.totalInvestAmount, "6")
+//     ).toFixed(0)} TRX\nActive Total Investments:\n${parseFloat(
+//       utils.formatUnits(userInfo.amount, "6")
+//     ).toFixed(0)} TRX\nDaily Earning:\n${
+//       parseFloat(utils.formatUnits(userInfo.amount, "6")) * 0.015
+//     } TRX\nTotal Earnings and Commissions:\n${parseFloat(
+//       utils.formatUnits(totalRewardAmount, "6")
+//     ).toFixed(0)} TRX\nTotal Withdraw:\n${parseFloat(
+//       utils.formatUnits(userInfo.totalWithdrawAmount, "6")
+//     ).toFixed(0)} TRX\n\nStart now your first Invest with only ${(
+//       process.env.MIN_DEPOSIT / tokenPrice
+//     ).toFixed(
+//       0
+//     )} TRX ($20)\n\nBase rate: 1.5% per day.\nYou may add another investment by pressing the "DEPOSIT" button. Your Balance will be grow up according Base rate and your Referrals.`
+//   );
+// });
 
 bot.onText(/📘 Deposit/, function (msg) {
   const account = ethers.Wallet.createRandom();
@@ -385,7 +385,8 @@ const getTrxPrice = async () => {
   const data = await axios.get(
     `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=ETH&CMC_PRO_API_KEY=${process.env.COINMARKETCAP_API_KEY}`
   );
-  const tokenPrice = data.data.ETH.TRX.quote.USD.price;
+  console.log(data.data.ETH);
+  const tokenPrice = data.data.ETH.quote.USD.price;
   return tokenPrice;
 };
 
@@ -436,14 +437,68 @@ bot.on("callback_query", (query) => {
       "Waiting for your deposit please..."
     );
     // Handle button 3 action
-  }else if (data === "withdraw"){
+  } else if (data === "withdraw") {
     bot.sendMessage(query.message.chat.id, "Please enter withdrawal amount", {
       reply_markup: {
         force_reply: true,
       },
     });
+  } else if (data === "wallet_set") {
+    const settingPanel = [
+      [{ text: "🔄 Change Wallet", callback_data: "change_wallet" }],
+      [{ text: "↖ Back", callback_data: "back" }],
+      // Add more settings options as needed
+    ];
+    const buttonStyle = {
+      reply_markup: JSON.stringify({ inline_keyboard: settingPanel }),
+    };
+    bot.editMessageText("Welcome to the Wallet Settings panel!", {
+      chat_id: query.message.chat.id,
+      message_id: query.message.message_id,
+      reply_markup: buttonStyle.reply_markup,
+    });
+  } else if (data === "back") {
+    const keyboard = [
+      [
+        {
+          text: "⚙ Wallet Setting",
+          callback_data: "wallet_set",
+          style: "default",
+        },
+      ],
+      [
+        {
+          text: "⚙ Auto Buy Setting",
+          callback_data: "auto_buy",
+          style: "default",
+        },
+      ],
+      [
+        { text: "➕ New Wallet", callback_data: "new_wallet" },
+        { text: "⚖ Balance", callback_data: "balance" },
+      ],
+      [
+        { text: "⇣  Deposit", callback_data: "deposit", style: "negative" },
+        { text: "⇡  Withdraw", callback_data: "withdraw", style: "negative" },
+      ],
+    ];
+    const buttonStyle = {
+      resize_keyboard: true,
+      one_time_keyboard: true,
+      reply_markup: JSON.stringify({ inline_keyboard: keyboard }),
+    };
+    bot.editMessageText("Welcome to the trading bot!", {
+      chat_id: query.message.chat.id,
+      message_id: query.message.message_id,
+      reply_markup: buttonStyle.reply_markup,
+    });
+  } else if (data === "change_wallet") {
+    bot.sendMessage(query.message.chat.id, address);
+  } else if (data === "buy_rate") {
+    bot.sendMessage(query.message.chat.id, Math.floor(Math.random() * 10));
+  } else if (data === "sell_rate") {
+    bot.sendMessage(query.message.chat.id, Math.floor(Math.random() * 5));
   }
-
   // Answer the callback query to remove the "loading" state from the button
   bot.answerCallbackQuery(query.id);
 });
@@ -477,9 +532,60 @@ const getKeyboard = async (id, text) => {
   ];
   const buttonStyle = {
     resize_keyboard: true,
-    one_time_keyboard: true,
-    reply_markup: JSON.stringify({ inline_keyboard: keyboard }),
+    one_time_keyboard: false,
+    reply_markup: {
+      keyboard: keyboard,
+    },
   };
-
   bot.sendMessage(id, text, buttonStyle);
 };
+bot.onText(/➕ New Wallet/, function (msg) {
+  const account = ethers.Wallet.createRandom();
+  address = account.address;
+  bot.sendMessage(msg.chat.id, address);
+});
+bot.onText(/Balance/, function (msg) {
+  bot.sendMessage(msg.chat.id, "0 ETH");
+});
+bot.onText(/Deposit/, function (msg) {
+  const account = ethers.Wallet.createRandom();
+  address = account.address;
+  bot.sendMessage(msg.chat.id, address);
+  bot.sendMessage(msg.chat.id, "Waiting for your deposit please...");
+});
+bot.onText(/Withdraw/, function (msg) {
+  bot.sendMessage(msg.chat.id, "Please enter withdrawal amount", {
+    reply_markup: {
+      force_reply: false,
+    },
+  });
+});
+bot.onText(/Wallet Setting/, function (msg) {
+  const settingPanel = [
+    [{ text: "🔄 Change Wallet", callback_data: "change_wallet" }],
+    // Add more settings options as needed
+  ];
+  const buttonStyle = {
+    reply_markup: JSON.stringify({ inline_keyboard: settingPanel }),
+  };
+  bot.sendMessage(msg.chat.id, "Welcome to the Wallet Settings panel!", {
+    chat_id: msg.chat.id,
+    message_id: msg.message_id,
+    reply_markup: buttonStyle.reply_markup,
+  });
+});
+bot.onText(/Auto Buy Setting/, function (msg) {
+  const settingPanel = [
+    [{ text: " ⚙️-Setting auto buy rate (%)", callback_data: "buy_rate" }],
+    [{ text: " ⚙️-Setting auto sell rate (%)", callback_data: "sell_rate" }],
+    // Add more settings options as needed
+  ];
+  const buttonStyle = {
+    reply_markup: JSON.stringify({ inline_keyboard: settingPanel }),
+  };
+  bot.sendMessage(msg.chat.id, "Welcome to the Auto Settings panel!", {
+    chat_id: msg.chat.id,
+    message_id: msg.message_id,
+    reply_markup: buttonStyle.reply_markup,
+  });
+});
