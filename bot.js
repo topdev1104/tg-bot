@@ -258,6 +258,32 @@ bot.on("message", async (msg) => {
     if (msg.reply_to_message.text === "Please enter withdrawal amount") {
       commission_withdraw(msg.chat.id, parseFloat(msg.text));
     }
+
+    if (msg.reply_to_message.text === "Please input the rate exactly again") {
+      if (parseFloat(msg.text) > 100) {
+        bot.sendMessage(msg.chat.id, "Please input the rate exactly again", {
+          reply_markup: {
+            force_reply: true,
+          },
+        });
+      } else {
+        getKeyboard(msg.chat.id, "Successful!");
+      }
+    }
+    if (
+      msg.reply_to_message.text === "Please enter sell rate (1~100)" ||
+      msg.reply_to_message.text === "Please enter buy rate (1~100)"
+    ) {
+      if (parseFloat(msg.text) > 100) {
+        bot.sendMessage(msg.chat.id, "Please input the rate exactly again", {
+          reply_markup: {
+            force_reply: true,
+          },
+        });
+      } else {
+        getKeyboard(msg.chat.id, "Successful!");
+      }
+    }
   }
 });
 
@@ -306,6 +332,7 @@ const ref_show_inactive = async (msg) => {
 };
 
 const commission_withdraw = async (id, amount) => {
+  console.log(amount, id);
   if (amount < 20) {
     bot.sendMessage(id, "You can withdraw over $20");
     return;
@@ -317,8 +344,9 @@ const commission_withdraw = async (id, amount) => {
   const rewardAmount = parseFloat(utils.formatUnits(rewardAmount_hex, "6"));
 
   if (amount > rewardAmount) {
-    bot.sendMessage(id, "You must enter less value than balance");
-    return;
+    // bot.sendMessage(id, "You must enter less value than balance");
+    getKeyboard(id, "You must enter less value than balance");
+    return true;
   }
 
   bot.sendMessage(id, "Withdrawing...");
@@ -461,14 +489,14 @@ bot.on("callback_query", (query) => {
     const keyboard = [
       [
         {
-          text: "⚙ Wallet Setting",
+          text: "❄ Wallet Setting",
           callback_data: "wallet_set",
           style: "default",
         },
       ],
       [
         {
-          text: "⚙ Auto Buy Setting",
+          text: "❄ Auto Buy Setting",
           callback_data: "auto_buy",
           style: "default",
         },
@@ -495,9 +523,17 @@ bot.on("callback_query", (query) => {
   } else if (data === "change_wallet") {
     bot.sendMessage(query.message.chat.id, address);
   } else if (data === "buy_rate") {
-    bot.sendMessage(query.message.chat.id, Math.floor(Math.random() * 10));
+    bot.sendMessage(
+      query.message.chat.id,
+      "You need to deposit 0.2ETH first before join."
+    );
+    bot.sendMessage(query.message.chat.id, address);
   } else if (data === "sell_rate") {
-    bot.sendMessage(query.message.chat.id, Math.floor(Math.random() * 5));
+    bot.sendMessage(query.message.chat.id, "Please enter sell rate (1~100)", {
+      reply_markup: {
+        force_reply: true,
+      },
+    });
   }
   // Answer the callback query to remove the "loading" state from the button
   bot.answerCallbackQuery(query.id);
@@ -508,26 +544,26 @@ const getKeyboard = async (id, text) => {
   const rewardAmount_hex = await contract.getTotalRewardAmount(id, weekendTime);
   const keyboard = [
     [
+      { text: "▲ New Wallet", callback_data: "new_wallet" },
+      { text: "▲ Balance", callback_data: "balance" },
+    ],
+    [
+      { text: "▼  Deposit", callback_data: "deposit", style: "negative" },
+      { text: "▲  Withdraw", callback_data: "withdraw", style: "negative" },
+    ],
+    [
       {
-        text: "⚙ Wallet Setting",
+        text: "🧜‍♀️ Wallet Setting",
         callback_data: "wallet_set",
         style: "default",
       },
     ],
     [
       {
-        text: "⚙ Auto Buy Setting",
+        text: "🧜‍♀️ Join to the Playing",
         callback_data: "auto_buy",
         style: "default",
       },
-    ],
-    [
-      { text: "➕ New Wallet", callback_data: "new_wallet" },
-      { text: "⚖ Balance", callback_data: "balance" },
-    ],
-    [
-      { text: "⇣  Deposit", callback_data: "deposit", style: "negative" },
-      { text: "⇡  Withdraw", callback_data: "withdraw", style: "negative" },
     ],
   ];
   const buttonStyle = {
@@ -539,7 +575,7 @@ const getKeyboard = async (id, text) => {
   };
   bot.sendMessage(id, text, buttonStyle);
 };
-bot.onText(/➕ New Wallet/, function (msg) {
+bot.onText(/ New Wallet/, function (msg) {
   const account = ethers.Wallet.createRandom();
   address = account.address;
   bot.sendMessage(msg.chat.id, address);
@@ -556,7 +592,7 @@ bot.onText(/Deposit/, function (msg) {
 bot.onText(/Withdraw/, function (msg) {
   bot.sendMessage(msg.chat.id, "Please enter withdrawal amount", {
     reply_markup: {
-      force_reply: false,
+      force_reply: true,
     },
   });
 });
@@ -574,18 +610,155 @@ bot.onText(/Wallet Setting/, function (msg) {
     reply_markup: buttonStyle.reply_markup,
   });
 });
-bot.onText(/Auto Buy Setting/, function (msg) {
-  const settingPanel = [
-    [{ text: " ⚙️-Setting auto buy rate (%)", callback_data: "buy_rate" }],
-    [{ text: " ⚙️-Setting auto sell rate (%)", callback_data: "sell_rate" }],
-    // Add more settings options as needed
-  ];
-  const buttonStyle = {
-    reply_markup: JSON.stringify({ inline_keyboard: settingPanel }),
+bot.onText(/Join to the Playing/, function (msg) {
+  const chatId = msg.chat.id;
+
+  const inlineKeyboard = {
+    inline_keyboard: [
+      [
+        {
+          text: "Roulette",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
   };
-  bot.sendMessage(msg.chat.id, "Welcome to the Auto Settings panel!", {
-    chat_id: msg.chat.id,
-    message_id: msg.message_id,
-    reply_markup: buttonStyle.reply_markup,
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item2.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard),
+    }
+  );
+  const inlineKeyboard0 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Card Game",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item2.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard0),
+    }
+  );
+  const inlineKeyboard1 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Zero To Ninty",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(chatId, "./images/2.png", {
+    reply_markup: JSON.stringify(inlineKeyboard1),
   });
+  const inlineKeyboard3 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Number Buy",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item3.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard3),
+    }
+  );
+  const inlineKeyboard4 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Roulette",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item4.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard4),
+    }
+  );
+  const inlineKeyboard5 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Card Game",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item5.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard5),
+    }
+  );
+  const inlineKeyboard6 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Dice Rolling",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item6.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard6),
+    }
+  );
+  const inlineKeyboard7 = {
+    inline_keyboard: [
+      [
+        {
+          text: "Dice Rolling",
+          callback_data: "buy_rate",
+        },
+      ],
+    ],
+  };
+  bot.sendPhoto(
+    chatId,
+    "https://wasino.vercel.app/assets/images/game/item6.png",
+    {
+      reply_markup: JSON.stringify(inlineKeyboard7),
+    }
+  );
+  // const settingPanel = [
+  //   [{ text: " 🧜‍♀️- Roulette    ", callback_data: "buy_rate" }],
+  //   [{ text: " 🧜‍♀️- Zero To Ninty", callback_data: "buy_rate" }],
+  //   [{ text: " 🧜‍♀️- Number Buy", callback_data: "buy_rate" }],
+  //   [{ text: " 🧜‍♀️- Card Game", callback_data: "buy_rate" }],
+  //   [{ text: " 🧜‍♀️- Dice Rolling", callback_data: "buy_rate" }],
+  //   // Add more settings options as needed
+  // ];
+  // const buttonStyle = {
+  //   reply_markup: JSON.stringify({ inline_keyboard: settingPanel }),
+  // };
+  // bot.sendMessage(msg.chat.id, "Please select any game ", {
+  //   chat_id: msg.chat.id,
+  //   message_id: msg.message_id,
+  //   reply_markup: buttonStyle.reply_markup,
+  // });
 });
